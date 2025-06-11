@@ -80,7 +80,18 @@ function updateDateDisplay() {
 
 // 改变当前日期
 function changeDate(days) {
-    currentDate = new Date(currentDate.setDate(currentDate.getDate() + days));
+    // 获取今天的日期（重置时间部分）
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // 计算新日期
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + days);
+    
+    // 如果是未来日期，不允许选择
+    if (newDate > today) return;
+    
+    currentDate = newDate;
     updateDateDisplay();
     loadTasks();
     updateCompletionStatus();
@@ -347,6 +358,12 @@ function renderCalendar() {
         
         // 添加点击事件，切换到该日期
         dayElement.addEventListener('click', () => {
+            // 不允许选择未来日期
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (dayDate > today) return;
+            
             currentDate = dayDate;
             updateDateDisplay();
             loadTasks();
