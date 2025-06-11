@@ -20,6 +20,14 @@ const submitPhotoBtn = document.getElementById('submit-photo');
 let currentDate = new Date();
 let currentTask = null;
 
+// 添加新的DOM元素
+const navButtons = document.querySelectorAll('.nav-btn');
+const pages = document.querySelectorAll('.page');
+const streakDaysElement = document.getElementById('streak-days');
+const totalCompletedElement = document.getElementById('total-completed');
+const maxStreakElement = document.getElementById('max-streak');
+const monthlyChartElement = document.getElementById('monthly-chart');
+
 // 初始化应用
 function initApp() {
     updateDateDisplay();
@@ -28,6 +36,7 @@ function initApp() {
     renderCalendar();
     setupEventListeners();
     cleanupOldPhotos(); // 清理旧照片
+    updateStatistics(); // 更新统计数据
 }
 
 // 设置事件监听器
@@ -63,6 +72,163 @@ function setupEventListeners() {
     // 照片上传预览
     taskPhotoInput.addEventListener('change', previewPhoto);
     submitPhotoBtn.addEventListener('click', submitPhoto);
+    
+    // 导航按钮点击事件
+    navButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetPage = button.getAttribute('data-page');
+            switchPage(targetPage);
+        });
+    });
+}
+
+// 切换页面
+function switchPage(pageId) {
+    // 移除所有页面和导航按钮的active类
+    pages.forEach(page => page.classList.remove('active'));
+    navButtons.forEach(btn => btn.classList.remove('active'));
+    
+    // 添加active类到目标页面和对应的导航按钮
+    document.getElementById(pageId).classList.add('active');
+    document.querySelector(`[data-page="${pageId}"]`).classList.add('active');
+    
+    // 如果切换到统计页面，更新统计数据
+    if (pageId === 'stats-page') {
+        updateStatistics();
+    }
+    
+    // 如果切换到历史页面，确保日历是最新的
+    if (pageId === 'history-page') {
+        renderCalendar();
+    }
+}
+
+// 更新统计数据
+function updateStatistics() {
+    const stats = calculateStatistics();
+    
+    // 更新DOM元素
+    streakDaysElement.textContent = stats.currentStreak;
+    totalCompletedElement.textContent = stats.totalCompleted;
+    maxStreakElement.textContent = stats.maxStreak;
+    
+    // 渲染月度图表
+    renderMonthlyChart(stats.monthlyData);
+}
+
+// 计算统计数据
+function calculateStatistics() {
+    const taskDates = JSON.parse(localStorage.getItem('taskDates')) || [];
+    let currentStreak = 0;
+    let maxStreak = 0;
+    let totalCompleted = 0;
+    let tempStreak = 0;
+    let monthlyData = {};
+    
+    // 获取今天的日期（重置时间部分）
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = getDateKey(today);
+    
+    // 按日期排序
+    taskDates.sort();
+    
+    // 计算每个月的完成情况
+    taskDates.forEach(dateKey => {
+        const tasks = JSON.parse(localStorage.getItem(dateKey)) || [];
+        const completedTasks = tasks.filter(task => task.completed).length;
+        const totalTasks = tasks.length;
+        
+        // 计算总完成任务数
+        totalCompleted += completedTasks;
+        
+        // 如果有任务且全部完成，计入连续天数
+        if (totalTasks > 0 && completedTasks === totalTasks) {
+            tempStreak++;
+            
+            // 如果是今天或之前的日期，更新当前连续天数
+            const taskDate = new Date(dateKey);
+            if (taskDate <= today) {
+                // 检查是否是连续的日期
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayKey = getDateKey(yesterday);
+                
+                if (dateKey === todayKey || dateKey === yesterdayKey) {
+                    currentStreak = tempStreak;
+                }
+            }
+        } else {
+            // 重置临时连续天数
+            tempStreak = 0;
+        }
+        
+        // 更新最大连续天数
+        maxStreak = Math.max(maxStreak, tempStreak);
+        
+        // 更新月度数据
+        const month = dateKey.substring(0, 7); // 格式：YYYY-MM
+        if (!monthlyData[month]) {
+            monthlyData[month] = {
+                completed: 0,
+                total: 0
+            };
+        }
+        monthlyData[month].completed += completedTasks;
+        monthlyData[month].total += totalTasks;
+    });
+    
+    return {
+        currentStreak,
+        maxStreak,
+        totalCompleted,
+        monthlyData
+    };
+}
+
+// 渲染月度图表
+function renderMonthlyChart(monthlyData) {
+    monthlyChartElement.innerHTML = '';
+    
+    // 获取最近6个月的数据
+    const months = Object.keys(monthlyData).sort().slice(-6);
+    
+    // 如果没有数据，显示提示信息
+    if (months.length === 0) {
+        monthlyChartElement.innerHTML = '<div class="no-data">暂无数据</div>';
+        return;
+    }
+    
+    // 找出最大值，用于计算比例
+    let maxValue = 0;
+    months.forEach(month => {
+        const data = monthlyData[month];
+        const percentage = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+        maxValue = Math.max(maxValue, percentage);
+    });
+    
+    // 创建图表柱形
+    months.forEach(month => {
+        const data = monthlyData[month];
+        const percentage = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+        const height = maxValue > 0 ? (percentage / maxValue) * 100 : 0;
+        
+        const bar = document.createElement('div');
+        bar.className = 'chart-bar';
+        bar.style.height = `${height}%`;
+        bar.setAttribute('data-value', `${percentage}% (${data.completed}/${data.total})`);
+        
+        const monthLabel = document.createElement('div');
+        monthLabel.className = 'chart-label';
+        monthLabel.textContent = month.substring(5); // 只显示MM部分
+        
+        const barContainer = document.createElement('div');
+        barContainer.className = 'chart-bar-container';
+        barContainer.appendChild(bar);
+        barContainer.appendChild(monthLabel);
+        
+        monthlyChartElement.appendChild(barContainer);
+    });
 }
 
 // 打开添加任务模态框

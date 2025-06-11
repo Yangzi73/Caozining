@@ -18,31 +18,83 @@
             </div>
         </header>
 
-        <main>
-            <div class="tasks-header">
-                <h2>今日任务</h2>
-                <button id="add-task-icon" class="add-task-icon"><i class="fas fa-plus"></i></button>
-            </div>
+        <!-- 导航栏 -->
+        <nav class="main-nav">
+            <ul>
+                <li><button class="nav-btn active" data-page="tasks-page"><i class="fas fa-tasks"></i> 今日任务</button></li>
+                <li><button class="nav-btn" data-page="history-page"><i class="fas fa-history"></i> 历史记录</button></li>
+                <li><button class="nav-btn" data-page="stats-page"><i class="fas fa-chart-line"></i> 坚持统计</button></li>
+            </ul>
+        </nav>
 
-            <div id="tasks-list" class="tasks-list">
-                <!-- 任务列表将通过JavaScript动态生成 -->
-            </div>
-
-            <div class="completion-summary">
-                <h2>完成情况</h2>
-                <div class="progress-container">
-                    <div class="progress-bar">
-                        <div id="progress" class="progress"></div>
+        <!-- 页面容器 -->
+        <div class="pages-container">
+            <!-- 任务页面 -->
+            <div id="tasks-page" class="page active">
+                <main>
+                    <div class="tasks-header">
+                        <h2>今日任务</h2>
+                        <button id="add-task-icon" class="add-task-icon"><i class="fas fa-plus"></i></button>
                     </div>
-                    <span id="completion-rate">0%</span>
+
+                    <div id="tasks-list" class="tasks-list">
+                        <!-- 任务列表将通过JavaScript动态生成 -->
+                    </div>
+
+                    <div class="completion-summary">
+                        <h2>完成情况</h2>
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div id="progress" class="progress"></div>
+                            </div>
+                            <span id="completion-rate">0%</span>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <!-- 历史记录页面 -->
+            <div id="history-page" class="page">
+                <div class="calendar-view">
+                    <h2>历史记录</h2>
+                    <div id="calendar" class="calendar">
+                        <!-- 日历视图将通过JavaScript动态生成 -->
+                    </div>
                 </div>
             </div>
-        </main>
 
-        <div id="calendar-view" class="calendar-view">
-            <h2>历史记录</h2>
-            <div id="calendar" class="calendar">
-                <!-- 日历视图将通过JavaScript动态生成 -->
+            <!-- 坚持统计页面 -->
+            <div id="stats-page" class="page">
+                <div class="stats-view">
+                    <h2>坚持统计</h2>
+                    <div class="stats-card">
+                        <div class="stats-icon"><i class="fas fa-calendar-check"></i></div>
+                        <div class="stats-info">
+                            <h3>已坚持天数</h3>
+                            <div id="streak-days" class="stats-number">0</div>
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stats-icon"><i class="fas fa-tasks"></i></div>
+                        <div class="stats-info">
+                            <h3>已完成任务</h3>
+                            <div id="total-completed" class="stats-number">0</div>
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stats-icon"><i class="fas fa-fire"></i></div>
+                        <div class="stats-info">
+                            <h3>最长连续天数</h3>
+                            <div id="max-streak" class="stats-number">0</div>
+                        </div>
+                    </div>
+                    <div class="monthly-summary">
+                        <h3>月度完成情况</h3>
+                        <div id="monthly-chart" class="monthly-chart">
+                            <!-- 月度图表将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
