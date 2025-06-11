@@ -51,7 +51,7 @@ function initApp() {
     updateCompletionStatus();
     renderCalendar();
     setupEventListeners();
-    //cleanupOldPhotos(); // 清理旧照片
+    cleanupOldPhotos(); // 启用清理旧照片功能
     updateStatistics(); // 更新统计数据
     loadReflection(); // 加载当天的反思总结
 }
@@ -827,9 +827,46 @@ function previewPhoto(e) {
     
     const reader = new FileReader();
     reader.onload = function(event) {
-        photoPreview.innerHTML = `<img src="${event.target.result}" alt="任务照片预览">`;
+        // 创建图片元素用于压缩
+        const img = new Image();
+        img.onload = function() {
+            // 压缩图片
+            const compressedDataUrl = compressImage(img, file.type);
+            photoPreview.innerHTML = `<img src="${compressedDataUrl}" alt="任务照片预览">`;
+        };
+        img.src = event.target.result;
     };
     reader.readAsDataURL(file);
+}
+
+// 压缩图片函数
+function compressImage(img, fileType, maxWidth = 800, maxHeight = 800, quality = 0.7) {
+    const canvas = document.createElement('canvas');
+    let width = img.width;
+    let height = img.height;
+    
+    // 计算缩放比例
+    if (width > height) {
+        if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+        }
+    } else {
+        if (height > maxHeight) {
+            width *= maxHeight / height;
+            height = maxHeight;
+        }
+    }
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    // 绘制图片到canvas
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, width, height);
+    
+    // 转换为dataURL
+    return canvas.toDataURL(fileType, quality);
 }
 
 // 提交照片
@@ -865,11 +902,6 @@ function cleanupOldPhotos() {
     const today = new Date();
     const todayKey = getDateKey(today);
     
-    // 获取昨天的日期
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayKey = getDateKey(yesterday);
-    
     // 获取所有任务日期
     const taskDates = JSON.parse(localStorage.getItem('taskDates')) || [];
     
@@ -879,26 +911,24 @@ function cleanupOldPhotos() {
             const tasks = JSON.parse(localStorage.getItem(dateKey)) || [];
             let modified = false;
             
-            // 检查每个任务的照片日期
+            // 检查每个任务的照片
             tasks.forEach(task => {
-                if (task.photoProof && task.photoDate) {
-                    const photoDate = new Date(task.photoDate);
-                    const photoDateKey = getDateKey(photoDate);
-                    
-                    // 如果照片不是今天上传的，清除照片数据但保留完成状态
-                    if (photoDateKey !== todayKey) {
-                        task.photoProof = null;
-                        modified = true;
-                    }
+                if (task.photoProof) {
+                    // 清除照片数据但保留完成状态
+                    task.photoProof = null;
+                    modified = true;
                 }
             });
             
             // 如果有修改，保存回localStorage
             if (modified) {
                 localStorage.setItem(dateKey, JSON.stringify(tasks));
+                console.log(`已清理 ${dateKey} 的照片数据`);
             }
         }
     });
+    
+    console.log('照片清理完成');
 }
 
 // 显示照片全屏预览
