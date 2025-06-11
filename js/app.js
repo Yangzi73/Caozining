@@ -166,6 +166,7 @@ function calculateStatistics() {
     let totalCompleted = 0;
     let tempStreak = 0;
     let monthlyData = {};
+    let monthlyCompletedDays = {}; // 新增：每月完成天数
     
     // 获取今天的日期（重置时间部分）
     const today = new Date();
@@ -189,7 +190,7 @@ function calculateStatistics() {
         totalCompleted += completedTasks;
         
         // 处理连续天数计算
-        const taskDate = new Date(dateKey);
+        const taskDate = new Date(dateKey + 'T00:00:00');
         
         // 如果有任务且全部完成
         if (totalTasks > 0 && completedTasks === totalTasks) {
@@ -209,6 +210,13 @@ function calculateStatistics() {
             
             // 更新最大连续天数
             maxStreak = Math.max(maxStreak, tempStreak);
+            
+            // 新增：更新每月完成天数
+            const month = dateKey.substring(0, 7); // 格式：YYYY-MM
+            if (!monthlyCompletedDays[month]) {
+                monthlyCompletedDays[month] = new Set();
+            }
+            monthlyCompletedDays[month].add(dateKey);
         } else {
             // 有未完成任务，重置临时连续天数
             tempStreak = 0;
@@ -230,7 +238,7 @@ function calculateStatistics() {
     
     // 检查当前连续天数是否包含今天或昨天
     if (currentStreakDates.length > 0) {
-        const lastStreakDate = new Date(currentStreakDates[currentStreakDates.length - 1]);
+        const lastStreakDate = new Date(currentStreakDates[currentStreakDates.length - 1] + 'T00:00:00');
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
         
@@ -242,11 +250,18 @@ function calculateStatistics() {
         }
     }
     
+    // 转换每月完成天数为数字
+    const monthlyCompletedDaysCount = {};
+    for (const month in monthlyCompletedDays) {
+        monthlyCompletedDaysCount[month] = monthlyCompletedDays[month].size;
+    }
+    
     return {
         currentStreak,
         maxStreak,
         totalCompleted,
-        monthlyData
+        monthlyData,
+        monthlyCompletedDaysCount // 新增：返回每月完成天数
     };
 }
 
@@ -269,9 +284,22 @@ function renderMonthlyChart(monthlyData) {
     // 获取当月的天数
     const daysInMonth = new Date(year, month, 0).getDate();
     
+    // 获取统计数据
+    const stats = calculateStatistics();
+    const completedDays = stats.monthlyCompletedDaysCount[selectedMonth] || 0;
+    
+    // 添加每月完成天数显示
+    const completedDaysElement = document.createElement('div');
+    completedDaysElement.className = 'monthly-completed-days';
+    completedDaysElement.innerHTML = `<h3>每月完成天数</h3><div class="stats-number">${completedDays}</div>`;
+    monthlyChartElement.appendChild(completedDaysElement);
+    
     // 如果没有数据，显示提示信息
     if (!monthlyData[selectedMonth]) {
-        monthlyChartElement.innerHTML = '<div class="no-data">暂无数据</div>';
+        const noDataElement = document.createElement('div');
+        noDataElement.className = 'no-data';
+        noDataElement.textContent = '暂无任务数据';
+        monthlyChartElement.appendChild(noDataElement);
         return;
     }
     
@@ -308,6 +336,11 @@ function renderMonthlyChart(monthlyData) {
             maxValue = Math.max(maxValue, data.total);
         }
     });
+    
+    // 创建图表容器
+    const chartContainer = document.createElement('div');
+    chartContainer.className = 'chart-container';
+    monthlyChartElement.appendChild(chartContainer);
     
     // 创建图表柱形
     Object.entries(dailyData).forEach(([dateKey, data]) => {
@@ -357,7 +390,7 @@ function renderMonthlyChart(monthlyData) {
         barContainer.appendChild(barWrapper);
         barContainer.appendChild(dayLabel);
         
-        monthlyChartElement.appendChild(barContainer);
+        chartContainer.appendChild(barContainer);
     });
 }
 
@@ -397,7 +430,9 @@ function changeDate(days) {
 
 // 获取当前日期的格式化字符串（用作存储键）
 function getDateKey(date = currentDate) {
-    return date.toISOString().split('T')[0];
+    // 修复时区问题，确保使用本地日期
+    const d = new Date(date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 // 从localStorage加载任务
@@ -540,7 +575,7 @@ function renderReflectionHistory() {
     
     // 只显示当前日期之前的反思（包括当天）
     const filteredDates = sortedDates.filter(date => {
-        const reflectionDate = new Date(date);
+        const reflectionDate = new Date(date + 'T00:00:00'); // 添加时间部分确保正确解析
         reflectionDate.setHours(0, 0, 0, 0);
         const currentDateCopy = new Date(currentDate);
         currentDateCopy.setHours(0, 0, 0, 0);
@@ -561,8 +596,9 @@ function renderReflectionHistory() {
         
         const reflectionDate = document.createElement('div');
         reflectionDate.className = 'reflection-date';
-        const dateObj = new Date(date);
-        reflectionDate.textContent = dateObj.toLocaleDateString('zh-CN');
+        // 修复日期显示问题
+        const dateObj = new Date(date + 'T00:00:00');
+        reflectionDate.textContent = `${dateObj.getFullYear()}年${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
         
         const reflectionPreview = document.createElement('div');
         reflectionPreview.className = 'reflection-preview';
