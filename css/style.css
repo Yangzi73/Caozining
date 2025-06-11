@@ -456,3 +456,120 @@ main {
     color: white;
     font-size: 30px;
 }
+
+/* 在现有CSS中添加或修改以下样式 */
+
+/* 任务头部样式 */
+.tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+/* 添加任务图标按钮 */
+.add-task-icon {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.add-task-icon:hover {
+    background-color: #2980b9;
+    transform: scale(1.05);
+}
+
+/* 添加任务表单 */
+.add-task-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.add-task-form input {
+    padding: 12px 15px;
+    border: 1px solid #e1e4e8;
+    border-radius: 5px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.add-task-form input:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.add-task-form button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 12px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.add-task-form button:hover {
+    background-color: #2980b9;
+}
+
+/* 响应式设计调整 */
+@media (max-width: 768px) {
+    .add-task-form {
+        gap: 10px;
+    }
+}
+
+/* 任务照片证明样式 */
+.task-photo-proof {
+    width: 30px;
+    height: 30px;
+    border-radius: 3px;
+    object-fit: cover;
+    margin-right: 10px;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.task-photo-proof:hover {
+    transform: scale(1.1);
+}
+
+/* 照片预览大图 */
+.photo-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.photo-fullscreen img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+}
+
+.photo-fullscreen .close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: white;
+    font-size: 30px;
+}

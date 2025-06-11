@@ -19,16 +19,13 @@
         </header>
 
         <main>
-            <div class="add-task">
-                <input type="text" id="new-task" placeholder="添加新任务...">
-                <button id="add-task-btn">添加</button>
+            <div class="tasks-header">
+                <h2>今日任务</h2>
+                <button id="add-task-icon" class="add-task-icon"><i class="fas fa-plus"></i></button>
             </div>
 
-            <div class="tasks-container">
-                <h2>今日任务</h2>
-                <div id="tasks-list" class="tasks-list">
-                    <!-- 任务列表将通过JavaScript动态生成 -->
-                </div>
+            <div id="tasks-list" class="tasks-list">
+                <!-- 任务列表将通过JavaScript动态生成 -->
             </div>
 
             <div class="completion-summary">
@@ -46,6 +43,18 @@
             <h2>历史记录</h2>
             <div id="calendar" class="calendar">
                 <!-- 日历视图将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加任务的模态框 -->
+    <div id="add-task-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>添加新任务</h2>
+            <div class="add-task-form">
+                <input type="text" id="new-task" placeholder="输入任务内容...">
+                <button id="add-task-btn">添加</button>
             </div>
         </div>
     </div>

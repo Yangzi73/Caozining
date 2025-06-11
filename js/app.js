@@ -1,6 +1,8 @@
 // DOM元素
 const newTaskInput = document.getElementById('new-task');
 const addTaskBtn = document.getElementById('add-task-btn');
+const addTaskIcon = document.getElementById('add-task-icon');
+const addTaskModal = document.getElementById('add-task-modal');
 const tasksList = document.getElementById('tasks-list');
 const currentDateElement = document.getElementById('current-date');
 const prevDateBtn = document.getElementById('prev-date');
@@ -9,7 +11,7 @@ const progressBar = document.getElementById('progress');
 const completionRate = document.getElementById('completion-rate');
 const calendarElement = document.getElementById('calendar');
 const photoModal = document.getElementById('photo-modal');
-const closeModal = document.querySelector('.close');
+const closeModalButtons = document.querySelectorAll('.close');
 const taskPhotoInput = document.getElementById('task-photo');
 const photoPreview = document.getElementById('photo-preview');
 const submitPhotoBtn = document.getElementById('submit-photo');
@@ -25,10 +27,14 @@ function initApp() {
     updateCompletionStatus();
     renderCalendar();
     setupEventListeners();
+    cleanupOldPhotos(); // 清理旧照片
 }
 
 // 设置事件监听器
 function setupEventListeners() {
+    // 添加任务图标点击事件
+    addTaskIcon.addEventListener('click', openAddTaskModal);
+    
     // 添加任务
     addTaskBtn.addEventListener('click', addTask);
     newTaskInput.addEventListener('keypress', (e) => {
@@ -39,15 +45,31 @@ function setupEventListeners() {
     prevDateBtn.addEventListener('click', () => changeDate(-1));
     nextDateBtn.addEventListener('click', () => changeDate(1));
 
-    // 照片模态框
-    closeModal.addEventListener('click', closePhotoModal);
+    // 模态框关闭按钮
+    closeModalButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            addTaskModal.style.display = 'none';
+            photoModal.style.display = 'none';
+            currentTask = null;
+        });
+    });
+
+    // 点击模态框外部关闭
     window.addEventListener('click', (e) => {
-        if (e.target === photoModal) closePhotoModal();
+        if (e.target === addTaskModal) addTaskModal.style.display = 'none';
+        if (e.target === photoModal) photoModal.style.display = 'none';
     });
 
     // 照片上传预览
     taskPhotoInput.addEventListener('change', previewPhoto);
     submitPhotoBtn.addEventListener('click', submitPhoto);
+}
+
+// 打开添加任务模态框
+function openAddTaskModal() {
+    newTaskInput.value = '';
+    addTaskModal.style.display = 'block';
+    newTaskInput.focus();
 }
 
 // 更新日期显示
@@ -82,7 +104,7 @@ function renderTasks(tasks) {
     tasksList.innerHTML = '';
     
     if (tasks.length === 0) {
-        tasksList.innerHTML = '<div class="no-tasks">今天还没有任务，添加一些吧！</div>';
+        tasksList.innerHTML = '<div class="no-tasks">今天还没有任务，点击右上角加号添加任务！</div>';
         return;
     }
 
@@ -151,11 +173,26 @@ function addTask() {
         createdAt: new Date().toISOString()
     });
 
+    // 保存任务到localStorage
     localStorage.setItem(dateKey, JSON.stringify(tasks));
+    
+    // 保存所有任务的日期列表，用于持久化
+    saveTaskDates(dateKey);
+    
     newTaskInput.value = '';
+    addTaskModal.style.display = 'none';
     loadTasks();
     updateCompletionStatus();
     renderCalendar();
+}
+
+// 保存任务日期列表
+function saveTaskDates(dateKey) {
+    let taskDates = JSON.parse(localStorage.getItem('taskDates')) || [];
+    if (!taskDates.includes(dateKey)) {
+        taskDates.push(dateKey);
+        localStorage.setItem('taskDates', JSON.stringify(taskDates));
+    }
 }
 
 // 切换任务完成状态
@@ -186,8 +223,22 @@ function deleteTask(index) {
     const tasks = JSON.parse(localStorage.getItem(dateKey)) || [];
     
     if (tasks[index]) {
+        // 如果有照片，从存储中删除
+        if (tasks[index].photoProof) {
+            // 这里只是从任务中移除照片引用，实际照片数据仍在localStorage中
+            // 每日清理会处理未引用的照片
+        }
+        
         tasks.splice(index, 1);
         localStorage.setItem(dateKey, JSON.stringify(tasks));
+        
+        // 如果没有任务了，从日期列表中移除
+        if (tasks.length === 0) {
+            let taskDates = JSON.parse(localStorage.getItem('taskDates')) || [];
+            taskDates = taskDates.filter(date => date !== dateKey);
+            localStorage.setItem('taskDates', JSON.stringify(taskDates));
+        }
+        
         loadTasks();
         updateCompletionStatus();
         renderCalendar();
@@ -347,14 +398,58 @@ function submitPhoto() {
     const tasks = JSON.parse(localStorage.getItem(dateKey)) || [];
     
     if (tasks[currentTask]) {
+        // 保存照片到任务
         tasks[currentTask].photoProof = photoImg.src;
         tasks[currentTask].completed = true; // 上传照片后自动标记为完成
+        tasks[currentTask].photoDate = new Date().toISOString(); // 记录照片上传日期
         
         localStorage.setItem(dateKey, JSON.stringify(tasks));
         closePhotoModal();
         loadTasks();
         updateCompletionStatus();
     }
+}
+
+// 清理旧照片（每日执行一次）
+function cleanupOldPhotos() {
+    // 获取今天的日期
+    const today = new Date();
+    const todayKey = getDateKey(today);
+    
+    // 获取昨天的日期
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = getDateKey(yesterday);
+    
+    // 获取所有任务日期
+    const taskDates = JSON.parse(localStorage.getItem('taskDates')) || [];
+    
+    // 遍历所有日期，清理非当天的照片
+    taskDates.forEach(dateKey => {
+        if (dateKey !== todayKey) {
+            const tasks = JSON.parse(localStorage.getItem(dateKey)) || [];
+            let modified = false;
+            
+            // 检查每个任务的照片日期
+            tasks.forEach(task => {
+                if (task.photoProof && task.photoDate) {
+                    const photoDate = new Date(task.photoDate);
+                    const photoDateKey = getDateKey(photoDate);
+                    
+                    // 如果照片不是今天上传的，清除照片数据但保留完成状态
+                    if (photoDateKey !== todayKey) {
+                        task.photoProof = null;
+                        modified = true;
+                    }
+                }
+            });
+            
+            // 如果有修改，保存回localStorage
+            if (modified) {
+                localStorage.setItem(dateKey, JSON.stringify(tasks));
+            }
+        }
+    });
 }
 
 // 显示照片全屏预览
