@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日任务清单</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>每日任务清单</h1>
+            <div class="date-selector">
+                <button id="prev-date"><i class="fas fa-chevron-left"></i></button>
+                <span id="current-date"></span>
+                <button id="next-date"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </header>
+
+        <main>
+            <div class="add-task">
+                <input type="text" id="new-task" placeholder="添加新任务...">
+                <button id="add-task-btn">添加</button>
+            </div>
+
+            <div class="tasks-container">
+                <h2>今日任务</h2>
+                <div id="tasks-list" class="tasks-list">
+                    <!-- 任务列表将通过JavaScript动态生成 -->
+                </div>
+            </div>
+
+            <div class="completion-summary">
+                <h2>完成情况</h2>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progress" class="progress"></div>
+                    </div>
+                    <span id="completion-rate">0%</span>
+                </div>
+            </div>
+        </main>
+
+        <div id="calendar-view" class="calendar-view">
+            <h2>历史记录</h2>
+            <div id="calendar" class="calendar">
+                <!-- 日历视图将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务完成上传照片的模态框 -->
+    <div id="photo-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>上传完成证明</h2>
+            <p>请上传任务完成的照片证明</p>
+            <div class="photo-upload">
+                <input type="file" id="task-photo" accept="image/*" capture="camera">
+                <label for="task-photo">选择照片或拍照</label>
+            </div>
+            <div id="photo-preview" class="photo-preview"></div>
+            <button id="submit-photo">提交</button>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
