@@ -28,6 +28,22 @@ const totalCompletedElement = document.getElementById('total-completed');
 const maxStreakElement = document.getElementById('max-streak');
 const monthlyChartElement = document.getElementById('monthly-chart');
 
+// 反思总结相关元素
+const reflectionText = document.getElementById('reflection-text');
+const saveReflectionBtn = document.getElementById('save-reflection');
+const reflectionHistory = document.getElementById('reflection-history');
+const reflectionModal = document.getElementById('reflection-modal');
+const reflectionDate = document.getElementById('reflection-date');
+const reflectionModalContent = document.getElementById('reflection-modal-content');
+
+// 月份选择器相关元素
+const prevMonthBtn = document.getElementById('prev-month');
+const nextMonthBtn = document.getElementById('next-month');
+const currentMonthElement = document.getElementById('current-month');
+
+// 当前选择的月份（用于月度图表）
+let currentChartMonth = new Date();
+
 // 初始化应用
 function initApp() {
     updateDateDisplay();
@@ -35,8 +51,9 @@ function initApp() {
     updateCompletionStatus();
     renderCalendar();
     setupEventListeners();
-    cleanupOldPhotos(); // 清理旧照片
+    //cleanupOldPhotos(); // 清理旧照片
     updateStatistics(); // 更新统计数据
+    loadReflection(); // 加载当天的反思总结
 }
 
 // 设置事件监听器
@@ -59,6 +76,7 @@ function setupEventListeners() {
         button.addEventListener('click', () => {
             addTaskModal.style.display = 'none';
             photoModal.style.display = 'none';
+            reflectionModal.style.display = 'none';
             currentTask = null;
         });
     });
@@ -67,6 +85,7 @@ function setupEventListeners() {
     window.addEventListener('click', (e) => {
         if (e.target === addTaskModal) addTaskModal.style.display = 'none';
         if (e.target === photoModal) photoModal.style.display = 'none';
+        if (e.target === reflectionModal) reflectionModal.style.display = 'none';
     });
 
     // 照片上传预览
@@ -80,6 +99,13 @@ function setupEventListeners() {
             switchPage(targetPage);
         });
     });
+    
+    // 保存反思总结
+    saveReflectionBtn.addEventListener('click', saveReflection);
+    
+    // 月份选择器
+    prevMonthBtn.addEventListener('click', () => changeChartMonth(-1));
+    nextMonthBtn.addEventListener('click', () => changeChartMonth(1));
 }
 
 // 切换页面
@@ -112,8 +138,24 @@ function updateStatistics() {
     totalCompletedElement.textContent = stats.totalCompleted;
     maxStreakElement.textContent = stats.maxStreak;
     
+    // 更新当前月份显示
+    updateCurrentMonthDisplay();
+    
     // 渲染月度图表
     renderMonthlyChart(stats.monthlyData);
+}
+
+// 更新当前月份显示
+function updateCurrentMonthDisplay() {
+    const options = { year: 'numeric', month: 'long' };
+    currentMonthElement.textContent = currentChartMonth.toLocaleDateString('zh-CN', options);
+}
+
+// 切换图表月份
+function changeChartMonth(months) {
+    currentChartMonth.setMonth(currentChartMonth.getMonth() + months);
+    updateCurrentMonthDisplay();
+    updateStatistics();
 }
 
 // 计算统计数据
@@ -133,6 +175,10 @@ function calculateStatistics() {
     // 按日期排序
     taskDates.sort();
     
+    // 检查是否有连续的日期
+    let lastDate = null;
+    let currentStreakDates = [];
+    
     // 计算每个月的完成情况
     taskDates.forEach(dateKey => {
         const tasks = JSON.parse(localStorage.getItem(dateKey)) || [];
@@ -142,29 +188,33 @@ function calculateStatistics() {
         // 计算总完成任务数
         totalCompleted += completedTasks;
         
-        // 如果有任务且全部完成，计入连续天数
-        if (totalTasks > 0 && completedTasks === totalTasks) {
-            tempStreak++;
-            
-            // 如果是今天或之前的日期，更新当前连续天数
-            const taskDate = new Date(dateKey);
-            if (taskDate <= today) {
-                // 检查是否是连续的日期
-                const yesterday = new Date(today);
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayKey = getDateKey(yesterday);
-                
-                if (dateKey === todayKey || dateKey === yesterdayKey) {
-                    currentStreak = tempStreak;
-                }
-            }
-        } else {
-            // 重置临时连续天数
-            tempStreak = 0;
-        }
+        // 处理连续天数计算
+        const taskDate = new Date(dateKey);
         
-        // 更新最大连续天数
-        maxStreak = Math.max(maxStreak, tempStreak);
+        // 如果有任务且全部完成
+        if (totalTasks > 0 && completedTasks === totalTasks) {
+            // 如果是第一个日期或者与上一个日期相差一天
+            if (lastDate === null || 
+                (taskDate.getTime() - lastDate.getTime()) === 86400000) {
+                tempStreak++;
+                currentStreakDates.push(dateKey);
+            } else {
+                // 不连续，重置临时连续天数
+                tempStreak = 1;
+                currentStreakDates = [dateKey];
+            }
+            
+            // 更新最后一个日期
+            lastDate = taskDate;
+            
+            // 更新最大连续天数
+            maxStreak = Math.max(maxStreak, tempStreak);
+        } else {
+            // 有未完成任务，重置临时连续天数
+            tempStreak = 0;
+            currentStreakDates = [];
+            lastDate = null;
+        }
         
         // 更新月度数据
         const month = dateKey.substring(0, 7); // 格式：YYYY-MM
@@ -178,6 +228,20 @@ function calculateStatistics() {
         monthlyData[month].total += totalTasks;
     });
     
+    // 检查当前连续天数是否包含今天或昨天
+    if (currentStreakDates.length > 0) {
+        const lastStreakDate = new Date(currentStreakDates[currentStreakDates.length - 1]);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // 如果最后一个连续日期是今天或昨天，则当前连续天数有效
+        if (isSameDay(lastStreakDate, today) || isSameDay(lastStreakDate, yesterday)) {
+            currentStreak = tempStreak;
+        } else {
+            currentStreak = 0;
+        }
+    }
+    
     return {
         currentStreak,
         maxStreak,
@@ -186,46 +250,112 @@ function calculateStatistics() {
     };
 }
 
+// 检查两个日期是否是同一天
+function isSameDay(date1, date2) {
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
+}
+
 // 渲染月度图表
 function renderMonthlyChart(monthlyData) {
     monthlyChartElement.innerHTML = '';
     
-    // 获取最近6个月的数据
-    const months = Object.keys(monthlyData).sort().slice(-6);
+    // 获取当前选择月份的年月
+    const year = currentChartMonth.getFullYear();
+    const month = (currentChartMonth.getMonth() + 1).toString().padStart(2, '0');
+    const selectedMonth = `${year}-${month}`;
+    
+    // 获取当月的天数
+    const daysInMonth = new Date(year, month, 0).getDate();
     
     // 如果没有数据，显示提示信息
-    if (months.length === 0) {
+    if (!monthlyData[selectedMonth]) {
         monthlyChartElement.innerHTML = '<div class="no-data">暂无数据</div>';
         return;
     }
     
+    // 创建每天的数据
+    const dailyData = {};
+    
+    // 初始化每天的数据为0
+    for (let i = 1; i <= daysInMonth; i++) {
+        const day = i.toString().padStart(2, '0');
+        const dateKey = `${selectedMonth}-${day}`;
+        dailyData[dateKey] = {
+            completed: 0,
+            total: 0
+        };
+    }
+    
+    // 填充实际数据
+    const taskDates = JSON.parse(localStorage.getItem('taskDates')) || [];
+    taskDates.forEach(dateKey => {
+        if (dateKey.startsWith(selectedMonth)) {
+            const tasks = JSON.parse(localStorage.getItem(dateKey)) || [];
+            const completedTasks = tasks.filter(task => task.completed).length;
+            dailyData[dateKey] = {
+                completed: completedTasks,
+                total: tasks.length
+            };
+        }
+    });
+    
     // 找出最大值，用于计算比例
     let maxValue = 0;
-    months.forEach(month => {
-        const data = monthlyData[month];
-        const percentage = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
-        maxValue = Math.max(maxValue, percentage);
+    Object.values(dailyData).forEach(data => {
+        if (data.total > 0) {
+            maxValue = Math.max(maxValue, data.total);
+        }
     });
     
     // 创建图表柱形
-    months.forEach(month => {
-        const data = monthlyData[month];
+    Object.entries(dailyData).forEach(([dateKey, data]) => {
+        const day = dateKey.split('-')[2];
         const percentage = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
-        const height = maxValue > 0 ? (percentage / maxValue) * 100 : 0;
         
-        const bar = document.createElement('div');
-        bar.className = 'chart-bar';
-        bar.style.height = `${height}%`;
-        bar.setAttribute('data-value', `${percentage}% (${data.completed}/${data.total})`);
+        // 计算柱形高度
+        const totalHeight = maxValue > 0 ? (data.total / maxValue) * 100 : 0;
+        const completedHeight = data.total > 0 ? (data.completed / maxValue) * 100 : 0;
         
-        const monthLabel = document.createElement('div');
-        monthLabel.className = 'chart-label';
-        monthLabel.textContent = month.substring(5); // 只显示MM部分
-        
+        // 创建柱形容器
         const barContainer = document.createElement('div');
         barContainer.className = 'chart-bar-container';
-        barContainer.appendChild(bar);
-        barContainer.appendChild(monthLabel);
+        
+        // 创建总任务柱形（背景）
+        const totalBar = document.createElement('div');
+        totalBar.className = 'chart-bar chart-bar-total';
+        totalBar.style.height = `${totalHeight}%`;
+        totalBar.style.backgroundColor = '#ecf0f1';
+        
+        // 创建已完成任务柱形
+        const completedBar = document.createElement('div');
+        completedBar.className = 'chart-bar chart-bar-completed';
+        completedBar.style.height = `${completedHeight}%`;
+        completedBar.style.backgroundColor = '#3498db';
+        completedBar.style.position = 'absolute';
+        completedBar.style.bottom = '0';
+        completedBar.style.width = '100%';
+        
+        // 设置提示信息
+        barContainer.setAttribute('data-value', 
+            `${percentage}% (${data.completed}/${data.total})`);
+        
+        // 创建日期标签
+        const dayLabel = document.createElement('div');
+        dayLabel.className = 'chart-label';
+        dayLabel.textContent = day;
+        
+        // 将柱形添加到容器
+        const barWrapper = document.createElement('div');
+        barWrapper.style.position = 'relative';
+        barWrapper.style.width = '100%';
+        barWrapper.style.height = '100%';
+        
+        barWrapper.appendChild(totalBar);
+        barWrapper.appendChild(completedBar);
+        barContainer.appendChild(barWrapper);
+        barContainer.appendChild(dayLabel);
         
         monthlyChartElement.appendChild(barContainer);
     });
@@ -262,6 +392,7 @@ function changeDate(days) {
     loadTasks();
     updateCompletionStatus();
     renderCalendar();
+    loadReflection(); // 加载当天的反思总结
 }
 
 // 获取当前日期的格式化字符串（用作存储键）
@@ -361,6 +492,101 @@ function addTask() {
     loadTasks();
     updateCompletionStatus();
     renderCalendar();
+    updateStatistics();
+}
+
+// 保存反思总结
+function saveReflection() {
+    const text = reflectionText.value.trim();
+    if (!text) return;
+    
+    const dateKey = getDateKey();
+    const reflections = JSON.parse(localStorage.getItem('reflections')) || {};
+    
+    reflections[dateKey] = {
+        text: text,
+        date: new Date().toISOString()
+    };
+    
+    localStorage.setItem('reflections', JSON.stringify(reflections));
+    alert('反思总结已保存！');
+    loadReflection();
+}
+
+// 加载当天的反思总结
+function loadReflection() {
+    const dateKey = getDateKey();
+    const reflections = JSON.parse(localStorage.getItem('reflections')) || {};
+    
+    // 加载当天的反思
+    if (reflections[dateKey]) {
+        reflectionText.value = reflections[dateKey].text;
+    } else {
+        reflectionText.value = '';
+    }
+    
+    // 加载历史反思
+    renderReflectionHistory();
+}
+
+// 渲染反思历史
+function renderReflectionHistory() {
+    reflectionHistory.innerHTML = '';
+    const reflections = JSON.parse(localStorage.getItem('reflections')) || {};
+    const dateKey = getDateKey();
+    
+    // 按日期排序（最新的在前面）
+    const sortedDates = Object.keys(reflections).sort().reverse();
+    
+    // 只显示当前日期之前的反思（包括当天）
+    const filteredDates = sortedDates.filter(date => {
+        const reflectionDate = new Date(date);
+        reflectionDate.setHours(0, 0, 0, 0);
+        const currentDateCopy = new Date(currentDate);
+        currentDateCopy.setHours(0, 0, 0, 0);
+        return reflectionDate <= currentDateCopy;
+    });
+    
+    if (filteredDates.length === 0) {
+        reflectionHistory.innerHTML = '<div class="no-data">暂无历史反思</div>';
+        return;
+    }
+    
+    // 显示最近5条反思
+    filteredDates.slice(0, 5).forEach(date => {
+        const reflection = reflections[date];
+        const reflectionItem = document.createElement('div');
+        reflectionItem.className = 'reflection-item';
+        reflectionItem.dataset.date = date;
+        
+        const reflectionDate = document.createElement('div');
+        reflectionDate.className = 'reflection-date';
+        const dateObj = new Date(date);
+        reflectionDate.textContent = dateObj.toLocaleDateString('zh-CN');
+        
+        const reflectionPreview = document.createElement('div');
+        reflectionPreview.className = 'reflection-preview';
+        reflectionPreview.textContent = reflection.text.substring(0, 50) + 
+            (reflection.text.length > 50 ? '...' : '');
+        
+        reflectionItem.appendChild(reflectionDate);
+        reflectionItem.appendChild(reflectionPreview);
+        
+        // 点击查看完整反思
+        reflectionItem.addEventListener('click', () => {
+            showReflectionModal(date, reflection.text);
+        });
+        
+        reflectionHistory.appendChild(reflectionItem);
+    });
+}
+
+// 显示反思模态框
+function showReflectionModal(date, text) {
+    const dateObj = new Date(date);
+    reflectionDate.textContent = dateObj.toLocaleDateString('zh-CN') + ' 反思总结';
+    reflectionModalContent.textContent = text;
+    reflectionModal.style.display = 'block';
 }
 
 // 保存任务日期列表
@@ -389,6 +615,7 @@ function toggleTaskCompletion(index) {
         loadTasks();
         updateCompletionStatus();
         renderCalendar();
+        updateStatistics();
     }
 }
 
@@ -419,6 +646,7 @@ function deleteTask(index) {
         loadTasks();
         updateCompletionStatus();
         renderCalendar();
+        updateStatistics();
     }
 }
 
@@ -535,6 +763,7 @@ function renderCalendar() {
             loadTasks();
             updateCompletionStatus();
             renderCalendar();
+            loadReflection(); // 加载选中日期的反思总结
         });
         
         calendarElement.appendChild(dayElement);
@@ -590,6 +819,7 @@ function submitPhoto() {
         closePhotoModal();
         loadTasks();
         updateCompletionStatus();
+        updateStatistics();
     }
 }
 

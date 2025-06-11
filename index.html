@@ -50,6 +50,18 @@
                             <span id="completion-rate">0%</span>
                         </div>
                     </div>
+                    
+                    <!-- 每日反思总结区域 -->
+                    <div class="daily-reflection">
+                        <h2>每日反思总结</h2>
+                        <div class="reflection-content">
+                            <textarea id="reflection-text" placeholder="记录今天的反思和总结..."></textarea>
+                            <button id="save-reflection" class="save-reflection-btn">保存反思</button>
+                        </div>
+                        <div id="reflection-history" class="reflection-history">
+                            <!-- 历史反思将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
                 </main>
             </div>
 
@@ -89,7 +101,11 @@
                         </div>
                     </div>
                     <div class="monthly-summary">
-                        <h3>月度完成情况</h3>
+                        <div class="month-selector">
+                            <button id="prev-month"><i class="fas fa-chevron-left"></i></button>
+                            <h3 id="current-month">月度完成情况</h3>
+                            <button id="next-month"><i class="fas fa-chevron-right"></i></button>
+                        </div>
                         <div id="monthly-chart" class="monthly-chart">
                             <!-- 月度图表将通过JavaScript动态生成 -->
                         </div>
@@ -123,6 +139,15 @@
             </div>
             <div id="photo-preview" class="photo-preview"></div>
             <button id="submit-photo">提交</button>
+        </div>
+    </div>
+
+    <!-- 查看反思的模态框 -->
+    <div id="reflection-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="reflection-date">反思总结</h2>
+            <div id="reflection-modal-content" class="reflection-modal-content"></div>
         </div>
     </div>
 
